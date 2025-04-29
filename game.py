@@ -202,12 +202,12 @@ class AICompetitor:
         self.position = list(start_pos)
         self.path = None
         self.move_timer = 0
-        self.move_delay = 150  # Base movement speed
+        self.move_delay = 200  # Base movement speed
         self.has_speed_boost = False
         self.is_invisible = False
         self.collected_powerups = []
         self.trapped_count = 0
-        self.intelligence = 0.7  # Intelligence factor (0.0 to 1.0)
+        self.intelligence = 0.5  # Intelligence factor (0.0 to 1.0)
         # Higher intelligence means better at finding optimal paths
         
     def update(self, current_time, player_pos, obstacles, killer_obstacles):
@@ -226,6 +226,14 @@ class AICompetitor:
         if current_time - self.move_timer >= self.get_move_delay():
             self.move_timer = current_time
             self.move(player_pos, obstacles, killer_obstacles)
+    
+    
+    def scale_with_level(self, level):
+        # Intelligence scales up slightly per level, capped at 1.0
+        self.intelligence = min(1.0, 0.3 + 0.05 * (level - 1))
+        
+        # Speed increases by decreasing move_delay slightly, capped at 100ms
+        self.move_delay = max(100, 200 - 5 * (level - 1))
     
     def get_move_delay(self):
         # Return lower delay if speed boost is active
@@ -297,6 +305,7 @@ class AICompetitor:
                     if not has_obstacle:
                         self.position = [new_x, new_y]
                         break
+
                     
 class AIObstacle:
     def __init__(self, maze, player_pos):
@@ -1235,8 +1244,11 @@ class SabotageItem:
             return self.type
         return None
 
+MOVE_DELAY = 100  # Delay between movements (in milliseconds)
+last_move_time = 0  # Initialize the last move time
 
 def main():
+    global last_move_time
     pygame.init()
     
     # Display settings
@@ -1578,6 +1590,7 @@ def main():
                 
                 if next_level_button.check_click(mouse_pos, mouse_click):
                     difficulty.next_level()
+                    ai_competitor.scale_with_level(difficulty.level)
                     game_elements = initialize_game()
                     return game_elements
             
@@ -1809,11 +1822,12 @@ def main():
                     game_over = True
                 
                 # Handle player movement using keyboard
+               # Handle player movement using keyboard
                 keys = pygame.key.get_pressed()
-                
-                # Skip movement if player is frozen
-                if not (player_frozen and current_time < player_frozen_until):
-                    # Determine direction based on keypresses
+                current_time = pygame.time.get_ticks()  # Ensure this is updated every frame
+
+                # Skip movement if player is frozen or not enough time has passed
+                if not (player_frozen and current_time < player_frozen_until) and current_time - last_move_time > MOVE_DELAY:
                     dx, dy = 0, 0
                     if keys[pygame.K_UP] or keys[pygame.K_w]:
                         dx = -1
@@ -1823,27 +1837,27 @@ def main():
                         dy = -1
                     elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
                         dy = 1
-                    
+
                     # Apply confusion effect (reverse controls)
                     if player_confused and current_time < player_confused_until:
                         dx, dy = -dx, -dy
-                    
+
                     # Calculate new position
                     if dx != 0 or dy != 0:
                         new_x, new_y = player_pos[0] + dx, player_pos[1] + dy
-                        
+
                         # Check if new position is valid
-                        if (is_valid(new_x, new_y) and maze[new_x][new_y] != '#'):
+                        if is_valid(new_x, new_y) and maze[new_x][new_y] != '#':
                             # Move player
                             player_pos[0], player_pos[1] = new_x, new_y
-                            
-                            # Check if reached end
+                            last_move_time = current_time  # update cooldown time
+
+                            # --- (rest of your powerups, traps, checkpoints, etc.) ---
                             if new_x == len(maze) - 2 and new_y == len(maze[0]) - 1:
                                 level_complete = True
                                 player_won = True
                                 current_score += difficulty.calculate_score(game_timer.time_remaining / 1000, hint_system.hint_count)
-                            
-                            # Check for powerups
+
                             for powerup in powerups[:]:
                                 if list(powerup.position) == player_pos:
                                     powerup_type = powerup.collect()
@@ -1853,42 +1867,37 @@ def main():
                                         elif powerup_type == 'invisibility':
                                             powerup_manager.activate('invisibility', current_time, 8000)
                                         elif powerup_type == 'time':
-                                            game_timer.add_time(15)  # Add 15 seconds
+                                            game_timer.add_time(15)
                                         powerups.remove(powerup)
-                            
-                            # Check for special powerups
+
                             for special in special_powerups[:]:
                                 if list(special.position) == player_pos:
                                     special_type = special.collect()
                                     if special_type:
                                         special_powerup_manager.activate(special_type, current_time, player_pos, maze, (dx, dy))
                                         special_powerups.remove(special)
-                            
-                            # Check for sabotage items
+
                             for item in sabotage_items[:]:
                                 if list(item.position) == player_pos:
                                     sabotage_type = item.collect()
                                     if sabotage_type == 'freeze':
-                                            ai_frozen = True
-                                            ai_frozen_until = current_time + 5000  # Freeze for 5 seconds
+                                        ai_frozen = True
+                                        ai_frozen_until = current_time + 5000
                                     elif sabotage_type == 'confuse':
-                                            ai_confused = True
-                                            ai_confused_until = current_time + 7000  # Confuse for 7 seconds
+                                        ai_confused = True
+                                        ai_confused_until = current_time + 7000
                                     sabotage_items.remove(item)
-                            
-                            # Check for traps
+
                             if special_powerup_manager.check_trap(player_pos):
-                                # Player gets trapped
                                 special_powerup_manager.remove_trap(player_pos)
                                 player_frozen = True
-                                player_frozen_until = current_time + 3000  # Trapped for 3 seconds
-                            
-                            # Check checkpoints if race mode is active
+                                player_frozen_until = current_time + 3000
+
                             if checkpoints:
                                 checkpoint_reached = checkpoints.check_player_progress(player_pos)
                                 if checkpoint_reached >= 0:
-                                    # Add small score bonus for reaching checkpoint
                                     current_score += 100 * (checkpoint_reached + 1)
+
                 
                 # Update powerups
                 powerup_manager.update(current_time)
@@ -2036,7 +2045,7 @@ def main():
                 
                 # Draw checkpoints if enabled
                 if checkpoints:
-                    checkpoints.draw(screen, tile_size, offset_x, offset_y)
+                    checkpoints.draw(screen, tile_size)
                 
                 # Draw power-ups
                 for powerup in powerups:
