@@ -562,7 +562,7 @@ class GameTimer:
         minutes = seconds_left // 60
         seconds = seconds_left % 60
         
-        color = RED if self.low_time_warning else BLACK
+        color = RED if self.low_time_warning else WHITE
         
         timer_text = font.render(f"Time: {minutes:02d}:{seconds:02d}", True, color)
         screen.blit(timer_text, (WIDTH - 150, HEIGHT - 40))
@@ -1242,25 +1242,263 @@ class SabotageItem:
             self.maze[x][y] = ' '
             self.active = False
             return self.type
-        return None
+        return 
+def display_tutorial_screen(screen, tile_size):
+    """
+    Display a streamlined tutorial/loading screen explaining game elements.
+    
+    Args:
+        screen: The pygame screen surface
+        tile_size: Size of each tile in the game
+    """
+    # Set up colors
+    background_color = (30, 30, 50)
+    text_color = (255, 255, 255)
+    header_color = (200, 200, 255)
+    
+    # Fill background
+    screen.fill(background_color)
+    
+    # Get screen dimensions
+    screen_width, screen_height = screen.get_size()
+    
+    # Adjust tile size for tutorial display (smaller than in-game)
+    display_tile_size = tile_size * 0.8
+    
+    # Initialize pygame font
+    pygame.font.init()
+    title_font = pygame.font.SysFont('arial', 32, bold=True)
+    header_font = pygame.font.SysFont('arial', 20, bold=True)
+    text_font = pygame.font.SysFont('arial', 16)
+    timer_font = pygame.font.SysFont('arial', 24, bold=True)
+    
+    # Draw title
+    title_text = title_font.render("GAME TUTORIAL", True, header_color)
+    screen.blit(title_text, (screen_width//2 - title_text.get_width()//2, 30))
+    
+    # Create example elements - organized by category
+    elements = [
+        # Player states
+        {
+            "name": "Player",
+            "description": "You! Use arrow keys to move.",
+            "draw_func": lambda x, y: pygame.draw.rect(screen, (50, 100, 255), 
+                (x, y, display_tile_size, display_tile_size))
+        },
+        {
+            "name": "Speed Boost",
+            "description": "Temporary speed increase (green glow).",
+            "draw_func": lambda x, y: (
+                pygame.draw.rect(screen, (50, 100, 255), (x, y, display_tile_size, display_tile_size)),
+                pygame.draw.circle(screen, (0, 200, 100, 100), 
+                    (x + display_tile_size//2, y + display_tile_size//2), display_tile_size)
+            )
+        },
+        {
+            "name": "Invisibility",
+            "description": "Partially invisible to enemies.",
+            "draw_func": lambda x, y: (
+                screen.blit((lambda: (s := pygame.Surface((display_tile_size, display_tile_size), pygame.SRCALPHA), 
+                            s.fill((50, 100, 255, 150)), s)[2])(), (x, y))
+            )
+        },
+        # Obstacles
+        {
+            "name": "Regular Obstacle",
+            "description": "Blocks your path.",
+            "draw_func": lambda x, y: (
+                pygame.draw.rect(screen, (100, 100, 120), (x, y, display_tile_size, display_tile_size)),
+                pygame.draw.circle(screen, (50, 50, 60), 
+                    (x + display_tile_size//2, y + display_tile_size//2), display_tile_size//3)
+            )
+        },
+        {
+            "name": "Killer Obstacle",
+            "description": "DANGER! Game over if touched.",
+            "draw_func": lambda x, y: (
+                pygame.draw.rect(screen, (255, 100, 150), (x, y, display_tile_size, display_tile_size)),
+                pygame.draw.circle(screen, (0, 0, 0), 
+                    (x + display_tile_size//2, y + display_tile_size//2), display_tile_size//3),
+                pygame.draw.circle(screen, (255, 255, 255), 
+                    (x + display_tile_size//3, y + display_tile_size//3), display_tile_size//8),
+                pygame.draw.circle(screen, (255, 255, 255), 
+                    (x + 2*display_tile_size//3, y + display_tile_size//3), display_tile_size//8),
+                pygame.draw.arc(screen, (255, 255, 255), 
+                    (x + display_tile_size//4, y + display_tile_size//2, 
+                     display_tile_size//2, display_tile_size//3), 0, 3.14159, 2)
+            )
+        },
+        # Traps & Sabotage
+        {
+            "name": "Trap",
+            "description": "Slows you down if triggered.",
+            "draw_func": lambda x, y: (
+                pygame.draw.rect(screen, (0, 120, 0), (x, y, display_tile_size, display_tile_size)),
+                pygame.draw.line(screen, (0, 0, 0), 
+                    (x + display_tile_size//4, y + display_tile_size//2),
+                    (x + 3*display_tile_size//4, y + display_tile_size//2), 2),
+                pygame.draw.line(screen, (0, 0, 0), 
+                    (x + display_tile_size//2, y + display_tile_size//4),
+                    (x + display_tile_size//2, y + 3*display_tile_size//4), 2)
+            )
+        },
+        {
+            "name": "Sabotage Item",
+            "description": "Blocks path with an X mark.",
+            "draw_func": lambda x, y: (
+                pygame.draw.rect(screen, (150, 50, 200), (x, y, display_tile_size, display_tile_size)),
+                pygame.draw.line(screen, (255, 255, 255), 
+                    (x + display_tile_size//4, y + display_tile_size//4),
+                    (x + 3*display_tile_size//4, y + 3*display_tile_size//4), 2),
+                pygame.draw.line(screen, (255, 255, 255), 
+                    (x + display_tile_size//4, y + 3*display_tile_size//4),
+                    (x + 3*display_tile_size//4, y + display_tile_size//4), 2)
+            )
+        },
+        # Power-ups
+{
+    "name": "Time Bonus",
+    "description": "Adds extra time to your clock.",
+    "draw_func": lambda x, y: (
+        pygame.draw.rect(screen, (255, 170, 0), (x, y, display_tile_size, display_tile_size)),
+        pygame.draw.polygon(screen, (255, 255, 255), [
+            (x + display_tile_size // 2 + int((display_tile_size // 3) * math.cos(2 * math.pi * i / 5 - math.pi / 2)),
+             y + display_tile_size // 2 + int((display_tile_size // 3) * math.sin(2 * math.pi * i / 5 - math.pi / 2)))
+            if i % 2 == 0 else
+            (x + display_tile_size // 2 + int((display_tile_size // 6) * math.cos(2 * math.pi * i / 5 - math.pi / 2)),
+             y + display_tile_size // 2 + int((display_tile_size // 6) * math.sin(2 * math.pi * i / 5 - math.pi / 2)))
+            for i in range(5)
+        ])
+    )
+},
+{
+    "name": "Teleport",
+    "description": "Instantly move to another location.",
+    "draw_func": lambda x, y: (
+        pygame.draw.rect(screen, (200, 50, 200), (x, y, display_tile_size, display_tile_size)),
+        pygame.draw.polygon(screen, (255, 255, 255), [
+            (x + display_tile_size // 2, y + display_tile_size // 4),
+            (x + 3 * display_tile_size // 4, y + display_tile_size // 2),
+            (x + display_tile_size // 2, y + 3 * display_tile_size // 4),
+            (x + display_tile_size // 4, y + display_tile_size // 2)
+        ])
+    )
+},
+{
+    "name": "Wall Phase",
+    "description": "Pass through walls briefly.",
+    "draw_func": lambda x, y: (
+        pygame.draw.rect(screen, (50, 200, 255), (x, y, display_tile_size, display_tile_size)),
+        pygame.draw.polygon(screen, (255, 255, 255), [
+            (x + display_tile_size // 2, y + display_tile_size // 4),
+            (x + 3 * display_tile_size // 4, y + display_tile_size // 2),
+            (x + display_tile_size // 2, y + 3 * display_tile_size // 4),
+            (x + display_tile_size // 4, y + display_tile_size // 2)
+        ])
+    )
+}
 
+    ]
+    
+    # Display each element with description in a grid
+    y_offset = 90
+    elements_per_row = 4
+    spacing_x = screen_width // elements_per_row
+    spacing_y = display_tile_size + 50  # Space between rows
+    
+    for i, element in enumerate(elements):
+        row = i // elements_per_row
+        col = i % elements_per_row
+        
+        x_pos = (spacing_x // 2) - (display_tile_size // 2) + col * spacing_x
+        y_pos = y_offset + row * spacing_y
+        
+        # Draw element icon
+        element["draw_func"](x_pos, y_pos)
+        
+        # Draw element name
+        name_text = header_font.render(element["name"], True, header_color)
+        name_x = x_pos + (display_tile_size // 2) - (name_text.get_width() // 2)
+        screen.blit(name_text, (name_x, y_pos + display_tile_size + 5))
+        
+        # Draw element description (wrapped if needed)
+        desc_text = text_font.render(element["description"], True, text_color)
+        desc_x = x_pos + (display_tile_size // 2) - (desc_text.get_width() // 2)
+        screen.blit(desc_text, (desc_x, y_pos + display_tile_size + 30))
+    
+    # Draw game instructions
+    instructions = [
+        "Objective: Navigate the maze while avoiding obstacles.",
+        "Collect power-ups for special abilities.",
+        "Watch out for traps and deadly obstacles!",
+        "Press ARROW KEYS to move. Good luck!"
+    ]
+    
+    instruction_y = screen_height - 120
+    for instruction in instructions:
+        inst_text = text_font.render(instruction, True, text_color)
+        screen.blit(inst_text, (screen_width//2 - inst_text.get_width()//2, instruction_y))
+        instruction_y += 25
+    
+    # Initial display
+    pygame.display.flip()
+    
+    # Wait with countdown
+    start_time = pygame.time.get_ticks()
+    running = True
+    countdown_duration = 10  # Reduced from 15 seconds to 10
+    
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                return
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    running = False  # Allow skipping with spacebar
+        
+        # Calculate remaining time
+        elapsed_time = (pygame.time.get_ticks() - start_time) // 1000  # Convert to seconds
+        remaining_time = max(0, countdown_duration - elapsed_time)
+        
+        if remaining_time <= 0:
+            break
+        
+        # Update countdown timer
+        timer_surface = pygame.Surface((180, 35), pygame.SRCALPHA)
+        timer_surface.fill((0, 0, 0, 150))
+        screen.blit(timer_surface, (screen_width - 200, 20))
+        
+        timer_text = timer_font.render(f"Starting: {remaining_time}s", True, text_color)
+        screen.blit(timer_text, (screen_width - 190, 25))
+        
+        skip_text = text_font.render("Press SPACE to skip", True, text_color)
+        screen.blit(skip_text, (screen_width - 190, 50))
+        
+        pygame.display.flip()
+        pygame.time.Clock().tick(60)  # Limit to 60 FPS
+
+        
 MOVE_DELAY = 100  # Delay between movements (in milliseconds)
 last_move_time = 0  # Initialize the last move time
+
 
 def main():
     global last_move_time
     pygame.init()
-    
+    screen = pygame.display.set_mode((800, 600))
+    tile_size = 32  # Adjust according to your game
+    display_tutorial_screen(screen, tile_size)
+        
     # Display settings
     screen = pygame.display.set_mode((WIDTH, HEIGHT + 60))  # Extra height for UI panel
     pygame.display.set_caption("Dynamic Maze Escape Challenge")
-    clock = pygame.time.Clock()
     
-    # Fonts
+    clock = pygame.time.Clock()
     title_font = pygame.font.SysFont('Arial', 32, bold=True)
     header_font = pygame.font.SysFont('Arial', 24, bold=True)
-    font = pygame.font.SysFont('Arial', 18)
-    small_font = pygame.font.SysFont('Arial', 14)
+    font = pygame.font.SysFont('Arial', 20)
+    small_font = pygame.font.SysFont('Arial', 20)
     
     # Game state variables
     game_active = False
