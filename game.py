@@ -207,7 +207,7 @@ class AICompetitor:
         self.is_invisible = False
         self.collected_powerups = []
         self.trapped_count = 0
-        self.intelligence = 0.5  # Intelligence factor (0.0 to 1.0)
+        self.intelligence = 0.3  # Intelligence factor (0.0 to 1.0)
         # Higher intelligence means better at finding optimal paths
         
     def update(self, current_time, player_pos, obstacles, killer_obstacles):
