@@ -1,4 +1,7 @@
-##how to run
---git clone
---pip install pygame
---py game.py
+## How to Run
+
+-- git clone
+
+-- pip install pygame
+
+-- py game.py
