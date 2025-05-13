@@ -236,7 +236,6 @@ class AICompetitor:
         self.move_delay = max(100, 200 - 5 * (level - 1))
     
     def get_move_delay(self):
-        # Return lower delay if speed boost is active
         return self.move_delay / 1.5 if self.has_speed_boost else self.move_delay
     
     def move(self, player_pos, obstacles, killer_obstacles):
@@ -663,7 +662,7 @@ class PowerUpManager:
         
         # Set speed multiplier if it's a speed power-up
         if powerup_type == 'speed':
-            self.speed_multiplier = 1.5
+            self.speed_multiplier = 2
     
     def update(self, current_time):
         """Update active power-ups, remove expired ones"""
